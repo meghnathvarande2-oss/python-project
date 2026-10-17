@@ -1,0 +1,190 @@
+
+import csv
+import os
+from datetime import datetime
+
+FILE_NAME = "expenses.csv"
+FIELDNAMES = ["date", "category", "description", "amount"]
+
+
+def initialize_file():
+    """Create the CSV file with headers if it doesn't exist."""
+    if not os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
+            writer.writeheader()
+
+
+def load_expenses():
+    """Read all expenses from the CSV file."""
+    initialize_file()
+
+    with open(FILE_NAME, "r", newline="", encoding="utf-8") as file:
+        return list(csv.DictReader(file))
+
+
+def add_expense():
+    """Add a new expense to the CSV file."""
+    print("\n--- Add Expense ---")
+
+    date = input("Date (YYYY-MM-DD, blank for today): ").strip()
+
+    if not date:
+        date = datetime.today().strftime("%Y-%m-%d")
+    else:
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format.")
+            return
+
+    category = input("Category (Food, Travel, Bills, etc.): ").strip()
+    description = input("Description: ").strip()
+
+    if not category or not description:
+        print("Category and description cannot be empty.")
+        return
+
+    try:
+        amount = float(input("Amount (₹): "))
+        if amount <= 0:
+            print("Amount must be greater than zero.")
+            return
+    except ValueError:
+        print("Please enter a valid amount.")
+        return
+
+    with open(FILE_NAME, "a", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
+        writer.writerow({
+            "date": date,
+            "category": category.title(),
+            "description": description,
+            "amount": f"{amount:.2f}"
+        })
+
+    print("Expense saved successfully!")
+
+
+def view_expenses(expenses=None):
+    """Display all expenses or a filtered list."""
+    if expenses is None:
+        expenses = load_expenses()
+
+    print("\n--- Expense Records ---")
+
+    if not expenses:
+        print("No expenses found.")
+        return
+
+    print(f"{'Date':<12} {'Category':<15} {'Description':<25} {'Amount (₹)':>12}")
+    print("-" * 68)
+
+    for expense in expenses:
+        print(
+            f"{expense['date']:<12} "
+            f"{expense['category']:<15} "
+            f"{expense['description'][:24]:<25} "
+            f"{float(expense['amount']):>12.2f}"
+        )
+
+    total = sum(float(expense["amount"]) for expense in expenses)
+    print("-" * 68)
+    print(f"Total expenses: ₹{total:.2f}")
+
+
+def filter_expenses():
+    """Filter expenses by category or date."""
+    expenses = load_expenses()
+
+    if not expenses:
+        print("No expenses to filter.")
+        return
+
+    print("\n1. Filter by category")
+    print("2. Filter by date (YYYY-MM-DD)")
+    choice = input("Choose an option: ").strip()
+
+    if choice == "1":
+        category = input("Enter category: ").strip().casefold()
+        filtered = [
+            expense for expense in expenses
+            if expense["category"].casefold() == category
+        ]
+
+    elif choice == "2":
+        date = input("Enter date (YYYY-MM-DD): ").strip()
+
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format.")
+            return
+
+        filtered = [
+            expense for expense in expenses
+            if expense["date"] == date
+        ]
+
+    else:
+        print("Invalid choice.")
+        return
+
+    view_expenses(filtered)
+
+
+def category_summary():
+    """Display total spending for each category."""
+    expenses = load_expenses()
+
+    if not expenses:
+        print("No expenses available.")
+        return
+
+    summary = {}
+
+    for expense in expenses:
+        category = expense["category"]
+        amount = float(expense["amount"])
+        summary[category] = summary.get(category, 0) + amount
+
+    print("\n--- Category Summary ---")
+
+    for category, total in sorted(summary.items()):
+        print(f"{category:<20} ₹{total:.2f}")
+
+    grand_total = sum(summary.values())
+    print("-" * 32)
+    print(f"{'Grand Total':<20} ₹{grand_total:.2f}")
+
+
+def main():
+    initialize_file()
+
+    while True:
+        print("\n===== PERSONAL EXPENSE TRACKER =====")
+        print("1. Add Expense")
+        print("2. View All Expenses")
+        print("3. Filter Expenses")
+        print("4. Category Summary")
+        print("5. Exit")
+
+        choice = input("Enter your choice (1-5): ").strip()
+
+        if choice == "1":
+            add_expense()
+        elif choice == "2":
+            view_expenses()
+        elif choice == "3":
+            filter_expenses()
+        elif choice == "4":
+            category_summary()
+        elif choice == "5":
+            print("Your expenses are saved. Goodbye!")
+            break
+        else:
+            print("Invalid choice. Please select 1-5.")
+
+
+if __name__ == "__main__":
+    main()
